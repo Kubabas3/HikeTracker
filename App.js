@@ -1,20 +1,42 @@
+// App.js
+import React from 'react';
+import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import AppNavigator from './navigation/AppNavigator';
+import { HikeProvider } from './context/HikeContext';
+import { SettingsProvider, SettingsContext } from './context/SettingsContext';
 
-export default function App() {
+function InnerApp() {
+  const { theme, themeStyles } = React.useContext(SettingsContext);
+
+  const baseTheme = theme === 'dark' ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      background: themeStyles.background,
+      card: themeStyles.background,
+      text: themeStyles.text,
+    },
+  };
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
+    <View style={{ flex: 1, backgroundColor: themeStyles.background }}>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+      <HikeProvider>
+        <NavigationContainer theme={navTheme}>
+          <AppNavigator />
+        </NavigationContainer>
+      </HikeProvider>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <SettingsProvider>
+      <InnerApp />
+    </SettingsProvider>
+  );
+}
