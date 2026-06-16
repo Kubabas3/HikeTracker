@@ -21,16 +21,20 @@ export default function HomeScreen({ navigation }) {
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    navigation.setOptions({
-      headerShown: false,
-    });
+    navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
   const filtered = hikes.filter(h =>
     (h.title || '').toLowerCase().includes(query.trim().toLowerCase())
   );
 
-  const renderHike = useCallback(({ item, index }) => {
+  // Licznik wędrówek z tłumaczeniem
+  const hikeCountLabel = (n) => {
+    if (n === 1) return `1 ${translations.hikeCount_1 || 'hike'}`;
+    return `${n} ${translations.hikeCount_other || 'hikes'}`;
+  };
+
+  const renderHike = useCallback(({ item }) => {
     const hasStats = item.distance || item.duration;
     return (
       <TouchableOpacity
@@ -38,9 +42,7 @@ export default function HomeScreen({ navigation }) {
         onPress={() => navigation.navigate('HikeDetails', { hike: item })}
         activeOpacity={0.85}
       >
-        {/* Lewy akcent kolorowy */}
         <View style={[styles.cardAccent, { backgroundColor: s.buttonActive }]} />
-
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
             <View style={styles.cardIconWrap}>
@@ -50,9 +52,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={[styles.cardTitle, { color: s.text }]} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text style={[styles.cardDate, { color: s.secondaryText }]}>
-                {item.date}
-              </Text>
+              <Text style={[styles.cardDate, { color: s.secondaryText }]}>{item.date}</Text>
             </View>
             <TouchableOpacity
               onPress={() => removeHike(item.id)}
@@ -62,8 +62,6 @@ export default function HomeScreen({ navigation }) {
               <Ionicons name="trash-outline" size={18} color={theme === 'dark' ? '#f87171' : '#dc2626'} />
             </TouchableOpacity>
           </View>
-
-          {/* Badges ze statystykami */}
           {hasStats && (
             <View style={styles.badges}>
               {item.distance != null && (
@@ -98,19 +96,16 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={[styles.root, { backgroundColor: s.background }]}>
       <StatusBar barStyle={theme === 'dark' ? 'light-content' : 'dark-content'} />
-
-      {/* Header */}
       <View style={[styles.header, { backgroundColor: s.background, borderBottomColor: s.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={24} color={s.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: s.text }]}>Moje Wędrówki</Text>
+        <Text style={[styles.headerTitle, { color: s.text }]}>{translations.homeTitle}</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.headerBtn}>
           <Ionicons name="settings-outline" size={22} color={s.icon} />
         </TouchableOpacity>
       </View>
 
-      {/* Wyszukiwarka */}
       <View style={[styles.searchWrap, { backgroundColor: s.card, borderColor: s.border }]}>
         <Ionicons name="search-outline" size={18} color={s.secondaryText} />
         <TextInput
@@ -127,22 +122,20 @@ export default function HomeScreen({ navigation }) {
         )}
       </View>
 
-      {/* Licznik */}
       {filtered.length > 0 && (
         <Text style={[styles.countText, { color: s.secondaryText }]}>
-          {`${filtered.length} wędrówk${filtered.length === 1 ? 'a' : filtered.length < 5 ? 'i' : 'i'}`}
+          {hikeCountLabel(filtered.length)}
         </Text>
       )}
 
-      {/* Pusta lista */}
       {filtered.length === 0 && (
         <View style={styles.emptyWrap}>
           <View style={[styles.emptyIconCircle, { backgroundColor: s.card }]}>
             <Ionicons name="map-outline" size={48} color={s.border} />
           </View>
-          <Text style={[styles.emptyTitle, { color: s.text }]}>Brak wędrówek</Text>
+          <Text style={[styles.emptyTitle, { color: s.text }]}>{translations.homeTitle}</Text>
           <Text style={[styles.emptySubtitle, { color: s.secondaryText }]}>
-            Dodaj swoją pierwszą przygodę!
+            {translations.noHikes}
           </Text>
         </View>
       )}
@@ -155,7 +148,6 @@ export default function HomeScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* FAB */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: s.buttonActive }]}
         onPress={() => navigation.navigate('AddHike')}
@@ -181,22 +173,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: 16, marginTop: 14, marginBottom: 4,
     paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 14, borderWidth: 1,
-    gap: 8,
+    borderRadius: 14, borderWidth: 1, gap: 8,
   },
   searchInput:    { flex: 1, fontSize: 15, padding: 0 },
   countText:      { fontSize: 12, marginHorizontal: 20, marginBottom: 8, marginTop: 4 },
   listContent:    { paddingHorizontal: 16, paddingBottom: 110, paddingTop: 4 },
   card: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    marginBottom: 10,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    flexDirection: 'row', borderRadius: 16, marginBottom: 10,
+    overflow: 'hidden', elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08, shadowRadius: 4,
   },
   cardAccent:     { width: 4 },
   cardBody:       { flex: 1, padding: 14 },
@@ -213,8 +199,7 @@ const styles = StyleSheet.create({
   badges:         { flexDirection: 'row', gap: 6, marginTop: 10, flexWrap: 'wrap' },
   badge: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 20,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
   },
   badgeText:      { fontSize: 11, fontWeight: '500' },
   emptyWrap: {
@@ -223,19 +208,16 @@ const styles = StyleSheet.create({
   },
   emptyIconCircle: {
     width: 96, height: 96, borderRadius: 48,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 8,
   },
   emptyTitle:     { fontSize: 18, fontWeight: '700' },
-  emptySubtitle:  { fontSize: 14 },
+  emptySubtitle:  { fontSize: 14, textAlign: 'center' },
   fab: {
     position: 'absolute', right: 24, bottom: 32,
     width: 60, height: 60, borderRadius: 30,
     justifyContent: 'center', alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#2E7D32',
+    elevation: 6, shadowColor: '#2E7D32',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    shadowOpacity: 0.35, shadowRadius: 6,
   },
 });

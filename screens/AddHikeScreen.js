@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
-  TouchableOpacity, Image, Alert, ScrollView, FlatList
+  TouchableOpacity, Image, Alert, ScrollView
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -10,8 +10,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { HikeContext } from '../context/HikeContext';
 import { SettingsContext } from '../context/SettingsContext';
 
+// Formuła Haversine — oblicza dystans między dwoma punktami GPS uwzględniając krzywiznę Ziemi
+// Bez tej formuły dystans byłby błędny bo Ziemia nie jest płaska
 function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371;
+  const R = 6371; // promień Ziemi w km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -30,22 +32,23 @@ function formatTime(seconds) {
 }
 
 export default function AddHikeScreen({ navigation }) {
+  // useContext — pobieramy dane z globalnego stanu bez przekazywania propsów przez każdy ekran
   const { addHike } = useContext(HikeContext);
   const { themeStyles: s, translations } = useContext(SettingsContext);
 
   const [title, setTitle] = useState('');
-  const [photos, setPhotos] = useState([]); // tablica URI
-
-  const [status, setStatus] = useState('idle');
+  const [photos, setPhotos] = useState([]);
+  const [status, setStatus] = useState('idle'); // idle / tracking / paused
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
   const [speed, setSpeed] = useState(0);
   const [altitude, setAltitude] = useState(null);
   const [trackPoints, setTrackPoints] = useState([]);
 
+  // useRef — przechowuje wartości między renderami bez wywoływania ponownego renderowania
   const timerRef = useRef(null);
   const locationRef = useRef(null);
-  const lastPointRef = useRef(null);
+  const lastPointRef = useRef(null); // ostatni punkt GPS — potrzebny do obliczania dystansu
 
   useEffect(() => {
     return () => {
@@ -56,7 +59,7 @@ export default function AddHikeScreen({ navigation }) {
 
   const takePhoto = async () => {
     const { status: perm } = await ImagePicker.requestCameraPermissionsAsync();
-    if (perm !== 'granted') { Alert.alert('Błąd', translations.cameraDenied); return; }
+    if (perm !== 'granted') { Alert.alert('', translations.cameraDenied); return; }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (!result.canceled && result.assets?.length) {
       setPhotos(prev => [...prev, result.assets[0].uri]);
@@ -67,21 +70,26 @@ export default function AddHikeScreen({ navigation }) {
 
   const startTracking = async () => {
     const { status: perm } = await Location.requestForegroundPermissionsAsync();
-    if (perm !== 'granted') { Alert.alert('Błąd', translations.locationDenied); return; }
+    if (perm !== 'granted') { Alert.alert('', translations.locationDenied); return; }
 
     setStatus('tracking');
     setElapsed(0); setDistance(0); setSpeed(0);
     setTrackPoints([]); lastPointRef.current = null;
 
+    // Timer — aktualizuje czas co sekundę
     timerRef.current = setInterval(() => setElapsed(prev => prev + 1), 1000);
 
+    // watchPositionAsync — subskrybuje aktualizacje GPS
+    // timeInterval: 3000ms lub distanceInterval: 5m — co nastąpi pierwsze
     locationRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
       loc => {
         const { latitude, longitude, altitude: alt, speed: spd } = loc.coords;
         setAltitude(alt ? Math.round(alt) : null);
-        setSpeed(spd ? Math.max(0, spd * 3.6) : 0);
+        setSpeed(spd ? Math.max(0, spd * 3.6) : 0); // konwersja m/s → km/h
         setTrackPoints(prev => [...prev, { latitude, longitude }]);
+
+        // Obliczamy dystans od poprzedniego punktu i dodajemy do sumy
         if (lastPointRef.current) {
           setDistance(prev => prev + haversine(
             lastPointRef.current.latitude, lastPointRef.current.longitude,
@@ -105,7 +113,7 @@ export default function AddHikeScreen({ navigation }) {
   };
 
   const save = () => {
-    if (title.trim().length < 3) { Alert.alert('Błąd', translations.nameTooShort); return; }
+    if (title.trim().length < 3) { Alert.alert('', translations.nameTooShort); return; }
     const location = trackPoints.length > 0 ? trackPoints[0] : null;
     addHike(title.trim(), photos, location, {
       duration: elapsed > 0 ? elapsed : null,
@@ -119,7 +127,6 @@ export default function AddHikeScreen({ navigation }) {
 
   return (
     <ScrollView style={{ backgroundColor: s.background }} contentContainerStyle={styles.container}>
-      {/* Nazwa */}
       <Text style={[styles.label, { color: s.text }]}>{translations.hikeName}</Text>
       <TextInput
         style={[styles.input, { borderColor: s.border, color: s.text, backgroundColor: s.card }]}
@@ -129,74 +136,69 @@ export default function AddHikeScreen({ navigation }) {
         onChangeText={setTitle}
       />
 
-      {/* Galeria zdjęć */}
-      <Text style={[styles.label, { color: s.text }]}>Zdjęcia ({photos.length})</Text>
+      <Text style={[styles.label, { color: s.text }]}>
+        {`${translations.photos} (${photos.length})`}
+      </Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
-        {/* Kafelek "dodaj" */}
         <TouchableOpacity
           style={[styles.addPhotoTile, { backgroundColor: s.card, borderColor: s.border }]}
           onPress={takePhoto}
         >
           <Ionicons name="camera-outline" size={28} color={s.icon} />
-          <Text style={[styles.addPhotoText, { color: s.secondaryText }]}>Dodaj</Text>
+          <Text style={[styles.addPhotoText, { color: s.secondaryText }]}>
+            {translations.addPhoto}
+          </Text>
         </TouchableOpacity>
-
-        {/* Zdjęcia */}
-        {photos.map((uri, idx) => (
+        {photos.map((uri) => (
           <View key={uri} style={styles.photoTileWrap}>
             <Image source={{ uri }} style={styles.photoTile} resizeMode="cover" />
-            <TouchableOpacity
-              style={styles.photoRemove}
-              onPress={() => removePhoto(uri)}
-            >
+            <TouchableOpacity style={styles.photoRemove} onPress={() => removePhoto(uri)}>
               <Ionicons name="close-circle" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
         ))}
       </ScrollView>
 
-      {/* Statystyki na żywo */}
       {hasData && (
         <View style={[styles.statsCard, { backgroundColor: s.card }]}>
-          <Text style={[styles.sectionTitle, { color: s.text }]}>Statystyki na żywo</Text>
+          <Text style={[styles.sectionTitle, { color: s.text }]}>{translations.liveStats}</Text>
           <View style={styles.statsGrid}>
-            <StatItem icon="time-outline"        label="Czas"     value={formatTime(elapsed)}                       s={s} />
-            <StatItem icon="map-outline"         label="Dystans"  value={`${distance.toFixed(3)} km`}              s={s} />
-            <StatItem icon="speedometer-outline" label="Prędkość" value={`${speed.toFixed(1)} km/h`}               s={s} />
-            <StatItem icon="trending-up-outline" label="Wysokość" value={altitude != null ? `${altitude} m` : '—'} s={s} />
+            <StatItem icon="time-outline"        label={translations.time}     value={formatTime(elapsed)}                       s={s} />
+            <StatItem icon="map-outline"         label={translations.distance} value={`${distance.toFixed(3)} km`}              s={s} />
+            <StatItem icon="speedometer-outline" label={translations.speed}    value={`${speed.toFixed(1)} km/h`}               s={s} />
+            <StatItem icon="trending-up-outline" label={translations.altitude} value={altitude != null ? `${altitude} m` : '—'} s={s} />
           </View>
           <View style={styles.pointsRow}>
             <Ionicons name="navigate-outline" size={14} color={s.icon} />
             <Text style={[styles.pointsText, { color: s.secondaryText }]}>
-              {`  Punkty trasy: ${trackPoints.length}`}
+              {`  ${translations.trackPoints}: ${trackPoints.length}`}
             </Text>
           </View>
         </View>
       )}
 
-      {/* Sterowanie GPS */}
       <View style={styles.ctrlRow}>
         {status === 'idle' && (
           <TouchableOpacity style={[styles.ctrlBtn, { backgroundColor: s.buttonActive }]} onPress={startTracking}>
             <Ionicons name="play" size={18} color="#fff" />
-            <Text style={styles.ctrlBtnText}>Rozpocznij śledzenie</Text>
+            <Text style={styles.ctrlBtnText}>{translations.startTracking}</Text>
           </TouchableOpacity>
         )}
         {status === 'tracking' && (
           <TouchableOpacity style={[styles.ctrlBtn, { backgroundColor: '#e57373' }]} onPress={stopTracking}>
             <Ionicons name="stop" size={18} color="#fff" />
-            <Text style={styles.ctrlBtnText}>Zatrzymaj</Text>
+            <Text style={styles.ctrlBtnText}>{translations.stopTracking}</Text>
           </TouchableOpacity>
         )}
         {status === 'paused' && (
           <>
             <TouchableOpacity style={[styles.ctrlBtn, { backgroundColor: s.buttonActive }]} onPress={startTracking}>
               <Ionicons name="play" size={18} color="#fff" />
-              <Text style={styles.ctrlBtnText}>Wznów</Text>
+              <Text style={styles.ctrlBtnText}>{translations.resumeTracking}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.ctrlBtn, { backgroundColor: s.buttonInactive }]} onPress={resetTracking}>
               <Ionicons name="refresh" size={18} color={s.text} />
-              <Text style={[styles.ctrlBtnText, { color: s.text }]}>Reset</Text>
+              <Text style={[styles.ctrlBtnText, { color: s.text }]}>{translations.reset}</Text>
             </TouchableOpacity>
           </>
         )}
