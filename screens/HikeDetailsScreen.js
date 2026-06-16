@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SettingsContext } from '../context/SettingsContext';
+import StatItem from '../components/StatItem';
 
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
@@ -34,6 +35,7 @@ function getWeatherInfo(code, translations) {
   return                  { icon: 'cloud',        label: translations.weatherVariable };
 }
 
+// StatBadge — większa wersja statystyki używana tylko na tym ekranie
 function StatBadge({ icon, label, value, s }) {
   return (
     <View style={[statStyles.wrap, { backgroundColor: s.card }]}>
@@ -66,6 +68,7 @@ export default function HikeDetailsScreen({ route, navigation }) {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState(null);
 
+  // Pobieramy pogodę gdy ekran się otworzy — używamy współrzędnych GPS zapisanych podczas wędrówki
   useEffect(() => {
     if (!hike.location) return;
     setWeatherLoading(true);
@@ -88,7 +91,6 @@ export default function HikeDetailsScreen({ route, navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Zdjęcia */}
         {photos.length > 0 ? (
           <View>
             <TouchableOpacity onPress={() => setModalPhoto(photos[0])} activeOpacity={0.92}>
@@ -117,7 +119,6 @@ export default function HikeDetailsScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Tytuł i data */}
         <View style={styles.titleWrap}>
           <Text style={[styles.title, { color: s.text }]}>{hike.title}</Text>
           <View style={styles.dateRow}>
@@ -126,7 +127,6 @@ export default function HikeDetailsScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* Statystyki */}
         {hasStats && (
           <View style={styles.statsGrid}>
             {hike.distance != null && (
@@ -138,16 +138,13 @@ export default function HikeDetailsScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* GPS */}
         {hike.location && (
           <View style={[styles.infoRow, { backgroundColor: s.card }]}>
             <View style={[styles.infoIcon, { backgroundColor: s.background }]}>
               <Ionicons name="location" size={18} color={s.buttonActive} />
             </View>
             <View style={styles.infoText}>
-              <Text style={[styles.infoLabel, { color: s.secondaryText }]}>
-                {translations.gpsLocation}
-              </Text>
+              <Text style={[styles.infoLabel, { color: s.secondaryText }]}>{translations.gpsLocation}</Text>
               <Text style={[styles.infoValue, { color: s.text }]}>
                 {`${hike.location.latitude.toFixed(5)}, ${hike.location.longitude.toFixed(5)}`}
               </Text>
@@ -155,7 +152,6 @@ export default function HikeDetailsScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Pogoda */}
         <View style={[styles.weatherCard, { backgroundColor: s.card }]}>
           <View style={styles.weatherHeader}>
             <View style={[styles.infoIcon, { backgroundColor: s.background }]}>

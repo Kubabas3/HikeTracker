@@ -7,6 +7,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import StatItem from '../components/StatItem';
 import { HikeContext } from '../context/HikeContext';
 import { SettingsContext } from '../context/SettingsContext';
 
@@ -214,15 +215,6 @@ export default function AddHikeScreen({ navigation }) {
   );
 }
 
-function StatItem({ icon, label, value, s }) {
-  return (
-    <View style={styles.statItem}>
-      <Ionicons name={icon} size={20} color={s.buttonActive} />
-      <Text style={[styles.statLabel, { color: s.secondaryText }]}>{label}</Text>
-      <Text style={[styles.statValue, { color: s.text }]}>{value}</Text>
-    </View>
-  );
-}
 
 const styles = StyleSheet.create({
   container:    { padding: 20, paddingBottom: 40 },
